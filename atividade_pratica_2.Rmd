@@ -16,6 +16,7 @@ library(readxl)
 library(stringi)
 library(factoextra)
 library(ggrepel)
+library(skimr)
 ```
 
 # Importando dados
@@ -25,28 +26,23 @@ dados <- read_xlsx("produtividade_policial.xlsx")
 dados %>% 
   sample_n(10)
 ```
-# Tratando dados
 
-## Removendo carcteres especiais
+# 1. Tratando dados
 
+## 1.1. Removendo carcteres especiais
 ```{r}
 dados <- dados %>% 
   rename_with(~ stri_trans_general(.x, "Latin-ASCII") %>% 
                 tolower())
 ```
 
-
-## Removendo coluna "Total"
-
+## 1.2. Removendo coluna "Total"
 ```{r}
 dados <- dados[, -which(names(dados) == 'total')]
-dados
+
 ```
 
-
-## Pivotando tabela - meses para coluna
-
-
+## 1.3. Pivotando tabela - meses para linhas
 ```{r}
 dados1 <- dados %>%
           pivot_longer(
@@ -56,7 +52,7 @@ dados1 <- dados %>%
   )
 ```
 
-
+## 1.4. Pivotando tabela - ocorrencias para colunas 
 ```{r}
 dados1 <- dados1 %>% 
           pivot_wider(names_from = 'ocorrencia',
@@ -64,4 +60,56 @@ dados1 <- dados1 %>%
 
 ```
 
+## 1.5. Retirando a coluna 'mes'
+```{r}
+dados1 <- dados1[, -which(names(dados1) == 'mes')]
+```
 
+## 1.6. Pivotando coluna de ocorrencias
+```{r}
+dados2 <- dados1 %>% 
+          group_by(regiao) %>% 
+          summarise_all(sum)
+```
+
+## 1.7.transformando coluna regiao em row_names para utilziar no PCA
+
+```{r}
+dados <- dados2 %>% 
+  column_to_rownames(var = "regiao")
+```
+
+# 2. Obtendo componentes principais
+
+```{r}
+set.seed(1)
+
+X <- scale(dados, center = TRUE, scale = TRUE)
+pca <- prcomp(X)
+pca$rotation <- -pca$rotation
+pca$x <- -pca$x
+Phi <- pca$rotation
+Z <- pca$x
+fviz_eig(pca, addlabels = TRUE)
+```
+
+
+# 3. Obtendo contribuições das preditoras para a primeira componente e nomeando-a
+
+## 3.1. Tabela dos valores das cargas das componentes principais
+```{r}
+Phi %>% 
+  round(2)
+```
+
+```{r}
+biplot(pca, scale = 0, cex = 0.75,xlab = "PC1", ylab = "PC2")
+
+
+```
+
+
+
+# Resposta 2:
+são necessárias duas variáveis
+ 
