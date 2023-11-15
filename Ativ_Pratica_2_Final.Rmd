@@ -15,12 +15,9 @@ library(ggrepel)
 library(dplyr)
 ```
 
-# Base de dados
+# Importação e Tratamentos dos dados
 
-
-Os dados que serão utilizados nessa atividade são Secretaria de Segurança Pública de São Paulo e se referem à produtividade policial, registrados por mês ao longo de 2021 e detalhados para cada uma das regiões do estado de São Paulo.
-
-O primeiro passo é importar a base de dados e explorar a base importada:
+## Importando a base de dados:
 
 ```{r}
 dados <- read_xlsx("produtividade_policial.xlsx")
@@ -28,7 +25,9 @@ dados <- read_xlsx("produtividade_policial.xlsx")
 dados %>% 
   sample_n(10)
 ```
-Para facilitar a manipulação dos dados, serão removidos os caracteres especiais do nome das columas e deixá-los em letras minúsuculas:
+
+## Removendo caracteres especiais e deixando letras minúsculas nas colunas
+
 ```{r}
 dados <- dados %>% 
   rename_with(~ stri_trans_general(.x, "Latin-ASCII") %>% 
@@ -38,32 +37,40 @@ dados %>%
   sample_n(10)
 ```
 
-## Tarefa 1
-Pergunta: "Para este exercício, manipule os dados para considerar apenas os dados totais de cada indicador para cada região. Forneça o código que deixa os dados no seguinte formato:"
+# Tarefa 1
 
-Assim, vamos manipular os dados para considerar apenas os dados totais de cada indicador para cada região:
+Manipule os dados para considerar apenas os dados totais de cada indicador para cada região.
+
+## Retirando colunas da tabela
+
 ```{r}
 dados <- subset(dados, select = c(regiao, ocorrencia, total))
 ```
 
-E colocar a tabela no formato em que a coluna de ocorrências se transforme em 1 coluna por indicador:
+## Pivotando a tabela
+
 ```{r}
 dados <- dados %>% pivot_wider(names_from = ocorrencia,
                                values_from = total)
 dados %>% 
   sample_n(10)
+```
 
+## Alterando nomes das colunas
+para facilitar visualização nos gráficos
+```{r}
 colunas <- c("regiao","Porte de entorpecentes", "Apreensão de entorpencentes", "Armas de fogo Apreendidas", "Apreendimentos em flagrante", "Presos em flagrante", "Prisões efetuadas", "Inquéritos Policiais", "Tráfico de entorpecentes", "Porte ilegal de armas", "Flagrantes Lavrados", "Apreendidos por mandado", "Presos por mandado", "Veículos recuperados")
 
 colnames(dados) <- colunas
 ```
 
 
-## Tarefa 2
+# Tarefa 2
 
-Pergunta: "Realize o procedimento para obter as componentes principais deste conjunto de dados. Quantas componentes principais são necessárias para se explicar pelo menos 80% da variância dos dados?"
+Realize o procedimento para obter as componentes principais deste conjunto de dados. Quantas componentes principais são necessárias para se explicar pelo menos 80% da variância dos dados?
 
-O primeiro passo é obter as compomentes por meio da função prcomp e plotado o gráfico da variância dos dados explicada pelas componentes:
+## Obtendo componentes e plotando gráfico 
+
 ```{r}
 set.seed(123)
 dados <- dados %>% 
@@ -77,22 +84,19 @@ dados_pca <- pca$x #valores das componentes para cada observação/cidade com si
 fviz_eig(pca, addlabels = TRUE)
 ```
 
-E abaixo a soma acumulada do percentual explicado da variância dos dados:
-```{r}
-(cumsum(pca$sdev^2) / sum(pca$sdev^2))
-```
+Duas compentens principais são suficientes para explicar mais de 80% da variância dos dados
 
-Assim, com duas componentes principais podemos explicar mais de 80% da variância dos dados.
-
-## Tarefa 3
+# Tarefa 3
 
 Obtenha as contribuições das preditoras para a primeira componente principal. Qual nome você daria para esta componente?
+
 ```{r}
 Phi[1:13,1:1]
 ```
-Dado que todas as variáveis apresentam valores de Phi negativo e com valores próximos entre elas, um nome apropriado para essa componente seria de "Segurança".
 
-## Tarefa 4
+Dado que todas as variáveis apresentam valores de Phi negativo, com menor peso somente em variáveis relacionadas ao porte e tráfico de entorpecentes, além de possuirem valores próximos entre elas, um nome apropriado para essa componente seria de "Segurança".
+
+# Tarefa 4
 
 Obtenha as contribuições das preditoras para a segunda componente principal. Qual nome você daria para esta componente?
 
@@ -102,32 +106,37 @@ Phi[1:13,2:2]
 
 Nesta componente, há três valores de Phi que são maiores em módulo que o restante, sendo eles "Ocorrência de porte de entorpecentes", "Ocorrências de apreensão de entorpecentes" e "Número de infratores apreendidos por mandado". Há uma grande relação dessas categorias de ocorrências com o tema de tráfico e porte de drogas, pois quanto maior o valor das variáveis mencionadas, maior será o valor da componente, logo um nome que faz sentido para essa componente seria de "Tráfico de drogas".
 
-## Tarefa 5
+# Tarefa 5
 
 Faça um gráfico de dispersão com as duas primeiras componentes principais. Com base nas respostas anteriores e neste gráfico, o que pode-se dizer sobre a Capital? E sobre a região de Ribeirão Preto? E Sorocaba?
 
 ```{r}
 fviz_pca_biplot(pca, repel = TRUE, xlab = "Segurança", ylab = "Tráfico de drogas", labelsize=3)
 ```
+
 Em relação à Capital, é possível observar que, ambos os valores de segurança e tráfico de drogas são muito abaixo da média, isso pode ocorrer devido aos altos valores de outros tipos de ocorrência, que no caso da variável de tráfico, impactam negativamente essa componente, assim causando um valor negativo.
 
 Em relação à Ribeirão Preto, é possível observar que há um grande índice de tráfico de drogas, sendo o valor mais alto de todas as outras cidades, que pode contribuir com um valor negativo relacionado a segurança.
 
 Sorocaba apresenta valores de tráfico e segurança muito perto da média.
 
-## Tarefa 6 - Análise de Conglomerados
+# Tarefa 6 - Análise de Conglomerados
 
-### Tarefa 6.1
-Execute o método k-means para identificar o número ótimo de clusters entre as regiões analisadas;
+## Tarefa 6.1
 
-Gráfico do Método Silhouette
+Execute o método k-means para identificar o número ótimo de clusters entre as regiões analisadas:
+
+### 6.1.1 Gráfico do Método Silhouette
+
 ```{r}
 fviz_nbclust(dados, kmeans, method = "silhouette")
 ```
 
-Pelo método Silhouette, teremos 2 clusters.
+Por este método, é indicado que utilizemos 2 clusters.
 
-Gráfico do Método do Cotovelo (para os dados dos resultados do pca e iterando para até 10 clusters)
+### 6.1.2 Gráfico do Método do Cotovelo
+(para os dados dos resultados do pca e iterando para até 10 clusters)
+
 ```{r}
 set.seed(123)
 k <- 2:10
@@ -142,10 +151,11 @@ tibble(k = k) %>%
 
 Pela análise acima, 6 clusters configura um ponto ótimo entre a minimização da distância intracluster e o número de clusters que permite a interpretabilidade (quanto menor o número de clusters, melhor)
 
-### Tarefa 6.2
+# Tarefa 6.2
+
 Visualize os grupos obtidos em um gráfico de dispersão (utilize o resultado do PCA para a construção dos gráficos)
 
-Inicialmente vamos converter a matriz dados_pca (que possui os valores das componentes para cada observação) em uma dataframe (tabela). Na sequência, vamos construir o gráfico de dispersão com as componentes PC1 e PC2.
+
 ```{r}
 set.seed(123)
 dados_pca <- as.data.frame(dados_pca)
@@ -157,13 +167,14 @@ descricao %>%
   geom_point()+geom_text(aes(label = row.names(dados_pca)), vjust = -0.5)
 ```
 
-### Tarefa 6.3
+# Tarefa 6.3
+
 Analise os resultados do método de clusterização e interprete os grupos obtidos
 
 Observando o gráfico é possível concluir que, o primeiro cluster se relaciona com a região metropolitana de São Paulo incluindo a capital, e o segundo cluster está relacionado a outras cidades no estado de São Paulo. Isso se dá principalmente pelo valor de segurança, onde a região metropolitana apresenta valores menores relativo às outras cidades no mesmo estado.
 
+# Tarefa 6.4
 
-### Tarefa 6.4
 Discuta as implicações práticas dos grupos identificados, considerando possíveis ações que a Secretaria de Segurança Pública de São Paulo pode realizar
 
 Com o gráfico e os clusters criados, é visto que a região metropolitana de São Paulo e capital requerem uma atenção maior no quesito de segurança, pois o valor dessa componente é muito baixo em relação as outras, por isso deve-se considerar uma alocação de investimentos maiores nessa região. Também deve-se acompanhar o quesito de tráfico de drogas com cidades do cluster 2, pois há valores maiores do que o cluster 1, dado principalmente pelas cidades de Piracicaba e Ribeirão Preto.
